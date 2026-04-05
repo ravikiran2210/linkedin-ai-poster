@@ -36,7 +36,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Initialize database tables
-        run: python -c "import asyncio; from app.storage.db import init_db; asyncio.run(init_db()); print('DB tables ready')"
+        run: python scripts/init_db.py
 
       - name: Seed sources
         run: python scripts/seed_sources.py
