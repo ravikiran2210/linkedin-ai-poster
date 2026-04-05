@@ -38,7 +38,7 @@ class PublishingService:
 
         # Gather asset file paths
         assets = await self.asset_repo.get_by_candidate(draft.candidate_id)
-        image_paths = [a.file_path for a in assets if a.asset_type == "slide"]
+        image_paths = [a.file_path for a in assets if a.asset_type in ("slide", "image")]
 
         # Publish
         result = await self.post_creator.publish(

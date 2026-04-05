@@ -24,11 +24,15 @@ class PostCreator:
         image_paths: list[str] | None = None,
     ) -> dict[str, Any]:
         """Upload images (if any) and create the post. Returns post metadata."""
-        asset_urns: list[str] = []
+        image_urns: list[str] = []
 
         if image_paths:
-            asset_urns = await self.uploader.upload_images(image_paths)
+            image_urns = await self.uploader.upload_images(image_paths)
+            logger.info("Prepared %d image URNs for post", len(image_urns))
 
-        result = await self.client.create_post(text=caption, media_assets=asset_urns or None)
+        result = await self.client.create_post(
+            text=caption,
+            image_urns=image_urns or None,
+        )
         logger.info("Post published: %s", result.get("url", ""))
         return result
