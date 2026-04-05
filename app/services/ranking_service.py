@@ -40,43 +40,47 @@ class RankingService:
         since = hours_ago(settings.fetch_window_hours)
         raw_items = await self.raw_repo.get_without_candidate(since)
 
-        if not raw_items:
-            logger.info("No new raw items to rank")
+        if raw_items:
+            # Convert to CollectedItem for processing
+            collected = [self._raw_to_collected(ri) for ri in raw_items]
+
+            # Create candidates
+            for raw_item, ci in zip(raw_items, collected):
+                topic = self.classifier.classify(ci)
+                scores = self.scorer.score(ci)
+                summary = self.summarizer.summarize(ci.title, ci.content)
+                dup_key = self.dedup.duplicate_group_key(ci)
+
+                # Skip if duplicate group already has a candidate
+                if await self.cand_repo.exists_by_duplicate_key(dup_key):
+                    continue
+
+                cand = Candidate(
+                    raw_item_id=raw_item.id,
+                    topic=topic,
+                    short_summary=summary,
+                    normalized_title=normalize_title(ci.title),
+                    normalized_content=ci.content[:2000] if ci.content else None,
+                    duplicate_group_key=dup_key,
+                    authority_score=scores["authority_score"],
+                    recency_score=scores["recency_score"],
+                    interest_score=scores["interest_score"],
+                    clarity_score=scores["clarity_score"],
+                    final_score=scores["final_score"],
+                )
+                await self.cand_repo.insert(cand)
+
+            await self.session.commit()
+            logger.info("Created candidates from %d new raw items", len(raw_items))
+        else:
+            logger.info("No new raw items — selecting from existing pending candidates")
+
+        # Always try to select the best pending candidate
+        top = await self.cand_repo.get_top_candidates(limit=20)
+        if not top:
+            logger.warning("No pending candidates available")
             return None
 
-        # Convert to CollectedItem for processing
-        collected = [self._raw_to_collected(ri) for ri in raw_items]
-
-        # Create candidates
-        for raw_item, ci in zip(raw_items, collected):
-            topic = self.classifier.classify(ci)
-            scores = self.scorer.score(ci)
-            summary = self.summarizer.summarize(ci.title, ci.content)
-            dup_key = self.dedup.duplicate_group_key(ci)
-
-            # Skip if duplicate group already has a candidate
-            if await self.cand_repo.exists_by_duplicate_key(dup_key):
-                continue
-
-            cand = Candidate(
-                raw_item_id=raw_item.id,
-                topic=topic,
-                short_summary=summary,
-                normalized_title=normalize_title(ci.title),
-                normalized_content=ci.content[:2000] if ci.content else None,
-                duplicate_group_key=dup_key,
-                authority_score=scores["authority_score"],
-                recency_score=scores["recency_score"],
-                interest_score=scores["interest_score"],
-                clarity_score=scores["clarity_score"],
-                final_score=scores["final_score"],
-            )
-            await self.cand_repo.insert(cand)
-
-        await self.session.commit()
-
-        # Select the best candidate
-        top = await self.cand_repo.get_top_candidates(limit=20)
         recent = await self.cand_repo.get_recent_selected(days=7)
 
         recent_topics = [c.topic for c in recent]
