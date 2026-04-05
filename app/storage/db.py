@@ -6,8 +6,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.config import settings
 
+
+def _get_async_url(url: str) -> str:
+    """Ensure the URL uses the asyncpg driver."""
+    # Replace postgresql:// with postgresql+asyncpg://
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Replace sslmode= with ssl= for asyncpg compatibility
+    url = url.replace("sslmode=", "ssl=")
+    # Remove channel_binding param (not supported by asyncpg)
+    if "channel_binding=" in url:
+        import re
+        url = re.sub(r"[&?]channel_binding=[^&]*", "", url)
+    return url
+
 engine = create_async_engine(
-    settings.database_url,
+    _get_async_url(settings.database_url),
     echo=False,
     pool_size=5,
     max_overflow=10,
