@@ -17,8 +17,8 @@ async def main() -> None:
 
     async with async_session_factory() as session:
         svc = FetchService(session)
-        count = await svc.fetch_and_store()
-        print(f"Backfilled {count} new items")
+        fetch_result = await svc.fetch_and_store()
+        print(f"Backfilled {fetch_result.new_count} new items")
 
     await close_db()
 

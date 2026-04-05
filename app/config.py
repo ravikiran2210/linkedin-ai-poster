@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # Paths
     generated_assets_dir: str = "generated_assets"
 
+    # Daily fetch digest email (Gmail: use an App Password, not your login password)
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    digest_to_email: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

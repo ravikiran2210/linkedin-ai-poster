@@ -2,7 +2,8 @@ name: AI Content Pipeline
 
 on:
   schedule:
-    # Runs every 3 days at 11:20 UTC (4:50 PM IST)
+    # Every 3 days at 11:20 UTC (~4:50 PM IST). Change the cron to run more often, e.g. daily:
+    # `20 11 * * *` = every day at 11:20 UTC
     - cron: "20 11 */3 * *"
   workflow_dispatch: # Manual trigger from GitHub UI
 
@@ -17,6 +18,10 @@ env:
   MIN_SCORE_TO_POST: "0.35"
   POST_INTERVAL_DAYS: "3"
   IMAGE_COUNT: "3"
+  # Optional: daily email listing every feed item collected (set all three in repo secrets)
+  SMTP_USER: ${{ secrets.SMTP_USER }}
+  SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+  DIGEST_TO_EMAIL: ${{ secrets.DIGEST_TO_EMAIL }}
 
 jobs:
   run-pipeline:

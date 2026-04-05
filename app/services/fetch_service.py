@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,15 @@ from app.utils.time_utils import utc_now
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class FetchRunResult:
+    """Outcome of a single fetch pass (one pipeline run)."""
+
+    new_count: int
+    collected: list[CollectedItem] = field(default_factory=list)
+    newly_stored: list[dict[str, str]] = field(default_factory=list)
+
+
 class FetchService:
     """Collect items from all sources, deduplicate, and store as raw_items."""
 
@@ -26,12 +36,18 @@ class FetchService:
         self.dedup = Deduplicator()
         self.repo = RawItemRepo(session)
 
-    async def fetch_and_store(self) -> int:
-        """Run all collectors, deduplicate, persist new items. Returns count of new items."""
+    async def fetch_and_store(self) -> FetchRunResult:
+        """Run all collectors, deduplicate, persist new items.
+
+        Returns full collector output (`collected`) for digest emails, plus rows
+        actually inserted (`newly_stored`).
+        """
         items = await self.aggregator.collect_all()
+        collected = list(items)
         items = self.dedup.deduplicate(items)
 
         new_count = 0
+        newly_stored: list[dict[str, str]] = []
         for item in items:
             c_hash = content_hash(f"{item.title}|{item.url}|{item.content}")
 
@@ -56,10 +72,21 @@ class FetchService:
             )
             await self.repo.insert(raw)
             new_count += 1
+            newly_stored.append(
+                {
+                    "title": item.title,
+                    "url": item.url,
+                    "source": item.source_name,
+                }
+            )
 
         await self.session.commit()
         logger.info("FetchService stored %d new items", new_count)
-        return new_count
+        return FetchRunResult(
+            new_count=new_count,
+            collected=collected,
+            newly_stored=newly_stored,
+        )
 
     async def _resolve_source(self, item: CollectedItem) -> int:
         """Find or create a Source row. Returns source ID."""
