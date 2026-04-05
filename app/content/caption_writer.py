@@ -131,50 +131,54 @@ class CaptionWriter:
         """Structured template fallback when no LLM key is available."""
         topic_label = topic.replace("_", " ").title()
 
-        # Topic-specific hooks
+        # Topic-specific hooks with emojis and high energy
         hooks = {
-            "llm": f"New LLM drop just landed — and this one's worth paying attention to.",
-            "ai_agents": f"AI agents just got more capable. Here's what you need to know.",
-            "ml_research": f"Fresh from the research lab — a paper that could shift how we build.",
-            "inference": f"Faster inference isn't just nice-to-have anymore. It's table stakes.",
-            "open_source_models": f"Open source AI keeps closing the gap with closed models.",
-            "tooling": f"New developer tooling alert — this could save you hours per week.",
-            "benchmark": f"New benchmark results are in, and the leaderboard just changed.",
-            "product_launch": f"Major product launch in the AI space. Here's the real story.",
+            "llm": f"🚨 New LLM drop just landed — and this one is genuinely worth paying attention to.",
+            "ai_agents": f"🤖 AI agents just got significantly more capable. Here is what you need to know.",
+            "ml_research": f"🔬 Fresh from the research lab — a paper that could fundamentally shift how we build.",
+            "inference": f"⚡ Faster inference isn't just nice-to-have anymore. It is absolute table stakes.",
+            "open_source_models": f"🌍 Open source AI continues to relentlessly close the gap with closed models.",
+            "tooling": f"🛠️ New developer tooling alert — this could easily save you hours per week.",
+            "benchmark": f"📊 New benchmark results are in, and the leaderboard just changed.",
+            "product_launch": f"🚀 Major product launch in the AI space! Here is the real story beneath the hype.",
         }
-        hook = hooks.get(topic, f"Something interesting just dropped in {topic_label}.")
+        hook = hooks.get(topic, f"🔥 Something massive just dropped in {topic_label}.")
 
-        explanation = f"{title}.\n\n{summary}"
+        explanation = (
+            f"📌 {title.upper()}\n\n"
+            f"Here is the core breakdown from {source}:\n"
+            f"🔹 {summary}"
+        )
 
         why_templates = {
-            "llm": "If you're building on top of language models, this directly affects your stack. Better models mean better products — but also new trade-offs to evaluate.",
-            "ai_agents": "For teams building agentic workflows, this changes what's possible out of the box. Less glue code, more reliable execution.",
-            "ml_research": "This isn't just academic — the techniques here could show up in production models within months. Worth understanding now.",
-            "inference": "For anyone serving models in production, this translates directly to lower costs and faster responses for your users.",
-            "open_source_models": "More open weights means more options for fine-tuning, self-hosting, and building without vendor lock-in.",
-            "tooling": "Developer experience matters. Better tools mean faster iteration cycles and fewer hours debugging infrastructure.",
-            "benchmark": "Benchmarks aren't everything, but they're a useful signal for where the field is heading and which models to evaluate next.",
-            "product_launch": "New products reshape the competitive landscape. This one is worth evaluating if you're making build-vs-buy decisions.",
+            "llm": "💡 Why it matters:\nIf you are building on top of language models, this directly affects your stack. Better models mean better products — but also new architectural trade-offs to evaluate.",
+            "ai_agents": "💡 Why it matters:\nFor teams building agentic workflows, this transforms what is possible out of the box. Less glue code, more reliable and scalable execution.",
+            "ml_research": "💡 Why it matters:\nThis is not just academic — the techniques here could show up in production models within months. It is highly worth understanding right now.",
+            "inference": "💡 Why it matters:\nFor anyone serving models in production, this translates directly to significantly lower costs and snap-fast responses for your end-users.",
+            "open_source_models": "💡 Why it matters:\nMore open weights means more options for fine-tuning, self-hosting, and building custom solutions completely free from vendor lock-in.",
+            "tooling": "💡 Why it matters:\nDeveloper experience is paramount. Better tools mean dramatically faster iteration cycles and far fewer hours debugging infrastructure.",
+            "benchmark": "💡 Why it matters:\nBenchmarks aren't everything, but they provide a highly useful signal for where the entire field is heading and which models you must evaluate next.",
+            "product_launch": "💡 Why it matters:\nNew products reshape the competitive landscape. This one is incredibly worth evaluating if you are making strict build-vs-buy decisions.",
         }
-        why = why_templates.get(topic, "This matters for anyone building with AI — the ecosystem is moving fast and staying current is a competitive advantage.")
+        why = why_templates.get(topic, "💡 Why it matters:\nThis matters for anyone building with AI. The ecosystem is moving at breakneck speed, and staying current is your absolute best competitive advantage.")
 
-        takeaway = f"I'd keep a close eye on this. The teams that move fast on updates like this are the ones shipping better products."
+        takeaway = f"🎯 The Takeaway:\nI'd keep a very close eye on this. The teams that move fast on updates like this are the ones shipping industry-leading products."
 
         cta_templates = {
-            "llm": "Have you tried it yet? What's your go-to model for production right now?",
-            "ai_agents": "Are you building with AI agents yet, or still waiting for the tooling to mature?",
-            "ml_research": "Which recent research paper has had the biggest impact on your actual work?",
-            "inference": "What's your current inference setup? Still using the same stack from 6 months ago?",
-            "open_source_models": "Open source or closed API — which are you betting on for your next project?",
-            "tooling": "What's the one AI dev tool you couldn't work without right now?",
-            "benchmark": "Do you actually use benchmark scores to pick models, or do you run your own evals?",
-            "product_launch": "First impressions — does this solve a real problem you have, or is it a solution looking for one?",
+            "llm": "👇 Have you tried it yet? What is your go-to model for production right now?",
+            "ai_agents": "👇 Are you building with AI agents yet, or still waiting for the tooling to fully mature?",
+            "ml_research": "👇 Which recent research paper has had the biggest impact on your actual day-to-day work?",
+            "inference": "👇 What is your current inference setup? Still using the identical stack from 6 months ago?",
+            "open_source_models": "👇 Open source or closed API — which paradigm are you strongly betting on for your next major project?",
+            "tooling": "👇 What is the one single AI dev tool you couldn't possibly work without right now?",
+            "benchmark": "👇 Do you actually use public benchmark scores to pick models, or do you run entirely custom internal evals?",
+            "product_launch": "👇 First impressions — does this solve a very real problem you have, or is it merely a solution looking for one?",
         }
-        cta = cta_templates.get(topic, "What's your take on this? Would love to hear from builders in the comments.")
+        cta = cta_templates.get(topic, "👇 What is your take on this? Would love to hear from other builders in the comments below.")
 
         hashtags = f"#AI #{topic_label.replace(' ', '')} #MachineLearning #Tech #BuildWithAI"
 
-        full_caption = f"{hook}\n\n{explanation}\n\n{why}\n\n{takeaway}\n\n{cta}\n\n{url}\n\n{hashtags}"
+        full_caption = f"{hook}\n\n{explanation}\n\n{why}\n\n{takeaway}\n\n{cta}\n\n🔗 Read more: {url}\n\n{hashtags}"
 
         return CaptionResult(
             hook=hook,

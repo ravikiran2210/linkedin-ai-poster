@@ -30,8 +30,11 @@ class PostCreator:
             image_urns = await self.uploader.upload_images(image_paths)
             logger.info("Prepared %d image URNs for post", len(image_urns))
 
+        # Sanitize caption because LinkedIn API strips `<` and `>` (which ruins formatting like Markdown tags)
+        sanitized_caption = caption.replace("<", "[").replace(">", "]")
+
         result = await self.client.create_post(
-            text=caption,
+            text=sanitized_caption,
             image_urns=image_urns or None,
         )
         logger.info("Post published: %s", result.get("url", ""))
