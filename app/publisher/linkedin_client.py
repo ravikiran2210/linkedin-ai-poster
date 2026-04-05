@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import httpx
@@ -13,6 +14,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 LINKEDIN_API_BASE = "https://api.linkedin.com"
+LINKEDIN_VERSION = os.getenv("LINKEDIN_VERSION", "202601")
 
 
 class LinkedInClient:
@@ -26,11 +28,13 @@ class LinkedInClient:
     def __init__(self) -> None:
         self.access_token = settings.linkedin_access_token
         self.person_urn = settings.linkedin_person_urn
-        self._headers = {
+
+    def _rest_headers(self) -> dict[str, str]:
+        return {
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json",
+            "Linkedin-Version": LINKEDIN_VERSION,
             "X-Restli-Protocol-Version": "2.0.0",
-            "LinkedIn-Version": "202401",
         }
 
     @property
@@ -58,7 +62,7 @@ class LinkedInClient:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{LINKEDIN_API_BASE}/rest/images?action=initializeUpload",
-                headers=self._headers,
+                headers=self._rest_headers(),
                 json=payload,
             )
             resp.raise_for_status()
@@ -139,7 +143,7 @@ class LinkedInClient:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{LINKEDIN_API_BASE}/rest/posts",
-                headers=self._headers,
+                headers=self._rest_headers(),
                 json=payload,
             )
             resp.raise_for_status()
