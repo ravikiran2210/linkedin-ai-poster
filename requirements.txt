@@ -1,0 +1,41 @@
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# HTTP
+httpx
+
+# Validation & settings
+pydantic
+pydantic-settings
+
+# Scheduling
+apscheduler
+
+# Content generation (Gemini via httpx – no SDK needed)
+jinja2
+
+# Image generation
+Pillow
+
+# RSS/XML parsing
+feedparser
+python-dateutil
+
+# Utilities
+python-dotenv
+tenacity
+xxhash
+
+# Testing
+pytest
+pytest-asyncio
+pytest-httpx
+
+# Dev
+ruff

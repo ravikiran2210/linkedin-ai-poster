@@ -1,0 +1,114 @@
+name: AI Content Pipeline
+
+on:
+  schedule:
+    # Runs every 3 days at 11:20 UTC (4:50 PM IST)
+    - cron: "20 11 */3 * *"
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+  LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+  LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+  AUTO_APPROVE: "false"
+  FETCH_WINDOW_HOURS: "72"
+  MIN_SCORE_TO_POST: "0.35"
+  POST_INTERVAL_DAYS: "3"
+  IMAGE_COUNT: "3"
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Initialize database tables
+        run: python -c "
+          import asyncio;
+          from app.storage.db import init_db;
+          asyncio.run(init_db());
+          print('DB tables ready')
+          "
+
+      - name: Seed sources
+        run: python scripts/seed_sources.py
+
+      - name: Run pipeline
+        id: pipeline
+        run: |
+          python scripts/run_pipeline_ci.py
+
+      - name: Upload generated assets
+        if: steps.pipeline.outputs.draft_id != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-assets-${{ steps.pipeline.outputs.draft_id }}
+          path: |
+            generated_assets/
+            draft_caption.txt
+            draft_meta.json
+          retention-days: 30
+
+      - name: Create review issue
+        if: steps.pipeline.outputs.draft_id != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const caption = fs.readFileSync('draft_caption.txt', 'utf8');
+            const meta = JSON.parse(fs.readFileSync('draft_meta.json', 'utf8'));
+
+            const body = [
+              '## New LinkedIn Draft Ready for Review',
+              '',
+              `**Draft ID:** ${meta.draft_id}`,
+              `**Topic:** ${meta.topic}`,
+              `**Score:** ${meta.score}`,
+              `**Images:** ${meta.asset_count} (${meta.image_strategy})`,
+              '',
+              '---',
+              '',
+              '### Caption Preview',
+              '',
+              '```',
+              caption,
+              '```',
+              '',
+              '---',
+              '',
+              '### How to publish',
+              '1. Review the caption above',
+              '2. Add the `approve` label to this issue to publish',
+              '3. Or close this issue to skip',
+              '',
+              `> Draft ID: ${meta.draft_id} | Run: ${process.env.GITHUB_RUN_ID}`,
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Draft] ${meta.hook.substring(0, 80)}`,
+              body: body,
+              labels: ['draft', 'pending-review'],
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ steps.pipeline.outputs.status || 'unknown' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Draft ID:** ${{ steps.pipeline.outputs.draft_id || 'none' }}" >> $GITHUB_STEP_SUMMARY

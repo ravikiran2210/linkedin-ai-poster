@@ -1,0 +1,121 @@
+name: Publish Approved Draft
+
+on:
+  issues:
+    types: [labeled]
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+  LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+  LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+
+jobs:
+  publish:
+    # Only run when "approve" label is added to a draft issue
+    if: github.event.label.name == 'approve' && contains(github.event.issue.labels.*.name, 'draft')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Extract draft ID from issue
+        id: extract
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body;
+            const match = body.match(/Draft ID:\s*(\d+)/);
+            if (!match) {
+              core.setFailed('Could not find Draft ID in issue body');
+              return;
+            }
+            core.setOutput('draft_id', match[1]);
+            console.log(`Found draft ID: ${match[1]}`);
+
+      - name: Download post assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: post-assets-${{ steps.extract.outputs.draft_id }}
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Approve and publish
+        id: publish
+        run: |
+          python -c "
+          import asyncio
+          import os
+          from app.logging_config import setup_logging
+          from app.storage.db import init_db, close_db
+          from app.workflows.approval_pipeline import ApprovalPipeline
+
+          async def main():
+              setup_logging()
+              await init_db()
+
+              pipeline = ApprovalPipeline()
+              result = await pipeline.approve_and_publish(${{ steps.extract.outputs.draft_id }})
+
+              await close_db()
+
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f'status={result[\"status\"]}\n')
+                  f.write(f'url={result.get(\"linkedin_url\", \"\")}\n')
+
+              print(f'Publish result: {result}')
+              return result
+
+          asyncio.run(main())
+          "
+
+      - name: Update issue with result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.publish.outputs.status }}';
+            const url = '${{ steps.publish.outputs.url }}';
+
+            let comment;
+            if (status === 'published') {
+              comment = `✅ **Published successfully!**\n\n🔗 ${url}`;
+            } else {
+              comment = `❌ **Publishing failed.** Status: ${status}\n\nCheck the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: comment,
+            });
+
+            // Close the issue after publishing
+            if (status === 'published') {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                state: 'closed',
+                labels: ['draft', 'published'],
+              });
+            }
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Publish Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Draft ID:** ${{ steps.extract.outputs.draft_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ steps.publish.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **LinkedIn URL:** ${{ steps.publish.outputs.url || 'N/A' }}" >> $GITHUB_STEP_SUMMARY

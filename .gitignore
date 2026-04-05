@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+venv/
+generated_assets/
+*.egg-info/
+.pytest_cache/
+draft_caption.txt
+draft_meta.json
+get_linkedin_token.py
