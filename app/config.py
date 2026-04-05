@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
+    # Comma-separated list is OK, e.g. "a@gmail.com, b@gmail.com"
     digest_to_email: str = ""
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}

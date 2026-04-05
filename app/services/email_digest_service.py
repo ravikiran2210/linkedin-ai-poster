@@ -136,11 +136,19 @@ New in database: <strong>{new_count}</strong></p>
     return plain, html_body
 
 
+def _digest_recipients() -> list[str]:
+    """Parse DIGEST_TO_EMAIL: one address or comma-separated list."""
+    raw = settings.digest_to_email.strip()
+    if not raw:
+        return []
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
 def _digest_configured() -> bool:
     return bool(
         settings.smtp_user.strip()
         and settings.smtp_password.strip()
-        and settings.digest_to_email.strip()
+        and _digest_recipients()
     )
 
 
@@ -155,10 +163,11 @@ def send_digest_sync(
         logger.info("Email digest skipped (set SMTP_USER, SMTP_PASSWORD, DIGEST_TO_EMAIL)")
         return
 
+    recipients = _digest_recipients()
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = settings.smtp_user
-    msg["To"] = settings.digest_to_email
+    msg["To"] = ", ".join(recipients)
     msg.set_content(plain_body)
     msg.add_alternative(html_body, subtype="html")
 
@@ -167,7 +176,7 @@ def send_digest_sync(
         smtp.login(settings.smtp_user, settings.smtp_password)
         smtp.send_message(msg)
 
-    logger.info("Sent fetch digest email to %s", settings.digest_to_email)
+    logger.info("Sent fetch digest email to %s", recipients)
 
 
 async def send_daily_digest_async(
